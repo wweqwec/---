@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手机评价分析系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .header h1 {
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .control-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .stats-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            height: 100%;
+        }
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .review-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+        .review-card.positive { border-left-color: #28a745; }
+        .review-card.neutral { border-left-color: #ffc107; }
+        .review-card.negative { border-left-color: #dc3545; }
+        .sentiment-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        .sentiment-badge.positive { background: #d4edda; color: #155724; }
+        .sentiment-badge.neutral { background: #fff3cd; color: #856404; }
+        .sentiment-badge.negative { background: #f8d7da; color: #721c24; }
+        .btn-compare {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 30px;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .btn-compare:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+        .pros-cons {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .pros-cons ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .pros-cons li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .pros-cons li:last-child {
+            border-bottom: none;
+        }
+        .pros-cons .pro { color: #28a745; }
+        .pros-cons .con { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Header -->
+        <div class="header text-center">
+            <h1><i class="bi bi-graph-up"></i> 手机评价分析系统</h1>
+            <p class="text-muted mb-0">基于真实用户评价的多维度分析平台</p>
+        </div>
+        
+        <!-- AI助手面板 -->
+        <div class="ai-assistant-panel mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-robot"></i> AI助手 - 手机推荐顾问</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div id="aiChatHistory" class="mb-3" style="max-height: 300px; overflow-y: auto;">
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i> 您好！我是AI助手，可以帮您：
+                                    <ul class="mb-0 mt-2">
+                                        <li>根据预算推荐手机</li>
+                                        <li>对比不同手机的优缺点</li>
+                                        <li>回答关于手机性能、拍照、续航等问题</li>
+                                        <li>提供购买建议</li>
+                                    </ul>
+                                    <small class="text-muted">支持品牌：Apple、华为、小米、三星、OPPO、Vivo、荣耀</small>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <input type="text" id="aiInput" class="form-control" placeholder="请输入您的问题，例如：3000元预算推荐哪款手机？" onkeypress="if(event.key==='Enter') sendAiMessage()">
+                                <button class="btn btn-primary" onclick="sendAiMessage()">
+                                    <i class="bi bi-send"></i> 发送
+                                </button>
+                                <button class="btn btn-outline-secondary" onclick="loadProductData()" id="loadProductsBtn">
+                                    <i class="bi bi-database"></i> 加载产品数据
+                                </button>
+                            </div>
+                            <div class="form-text mt-1" id="productDataStatus"></div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="alert alert-secondary" style="font-size: 0.9rem;">
+                                <strong><i class="bi bi-lightbulb"></i> 提问示例：</strong>
+                                <hr class="my-2">
+                                <small>
+                                    • 3000元预算推荐哪款手机？<br>
+                                    • iPhone 15 Pro Max和小米14 Ultra哪个拍照好？<br>
+                                    • 华为Mate 60 Pro+的优缺点？<br>
+                                    • 游戏性能最强的手机是哪款？<br>
+                                    • 续航最好的手机推荐？
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="row align-items-center">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">选择品牌</label>
+                    <select class="form-select" id="brandSelect" onchange="onBrandChange()">
+                        <option value="">请选择品牌</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">选择产品</label>
+                    <select class="form-select" id="productSelect" onchange="onProductChange()">
+                        <option value="">请先选择品牌</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">&nbsp;</label>
+                    <button class="btn btn-primary w-100" onclick="analyzeProduct()">
+                        <i class="bi bi-search"></i> 开始分析
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">&nbsp;</label>
+                    <button class="btn btn-compare w-100" onclick="showComparison()">
+                        <i class="bi bi-bar-chart"></i> 竞品对比
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="row mb-4" id="statsCards" style="display:none;">
+            <div class="col-md-2 mb-3">
+                <div class="stats-card">
+                    <i class="bi bi-chat-dots" style="font-size: 2rem; color: #667eea;"></i>
+                    <div class="stats-number text-primary" id="totalReviews">0</div>
+                    <div class="text-muted">总评价数</div>
+                </div>
+            </div>
+            <div class="col-md-2 mb-3">
+                <div class="stats-card">
+                    <i class="bi bi-emoji-smile" style="font-size: 2rem; color: #28a745;"></i>
+                    <div class="stats-number text-success" id="positiveReviews">0</div>
+                    <div class="text-muted">正面评价</div>
+                </div>
+            </div>
+            <div class="col-md-2 mb-3">
+                <div class="stats-card">
+                    <i class="bi bi-emoji-frown" style="font-size: 2rem; color: #dc3545;"></i>
+                    <div class="stats-number text-danger" id="negativeReviews">0</div>
+                    <div class="text-muted">负面评价</div>
+                </div>
+            </div>
+            <div class="col-md-2 mb-3">
+                <div class="stats-card">
+                    <i class="bi bi-star" style="font-size: 2rem; color: #ffc107;"></i>
+                    <div class="stats-number text-warning" id="avgScore">0</div>
+                    <div class="text-muted">平均评分</div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="stats-card" id="priceCard">
+                    <i class="bi bi-currency-exchange" style="font-size: 2rem; color: #667eea;"></i>
+                    <div class="stats-number text-primary" id="currentPrice">--</div>
+                    <div class="text-muted">
+                        当前价格 
+                        <span id="priceTrend" class="badge bg-secondary">--</span>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            最高: <span id="highestPrice">--</span> | 
+                            最低: <span id="lowestPrice">--</span>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="row" id="chartsRow1" style="display:none;">
+            <div class="col-md-6 mb-4">
+                <div class="chart-container">
+                    <h5><i class="bi bi-pie-chart"></i> 情感分布</h5>
+                    <div id="sentimentChart" style="height: 300px;"></div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="chart-container">
+                    <h5><i class="bi bi-bar-chart"></i> 数据来源分布</h5>
+                    <div id="sourceChart" style="height: 300px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Similar Priced Recommendations -->
+        <div class="row" id="recommendationsRow" style="display:none;">
+            <div class="col-md-12 mb-4">
+                <div class="chart-container">
+                    <h5><i class="bi bi-hand-thumbs-up"></i> 同价位推荐（±500元）</h5>
+                    <div id="recommendationsList" class="row"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pros & Cons -->
+        <div class="row" id="prosConsRow" style="display:none;">
+            <div class="col-md-6 mb-4">
+                <div class="pros-cons">
+                    <h5><i class="bi bi-check-circle text-success"></i> 用户满意点（优点）</h5>
+                    <ul id="prosList"></ul>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="pros-cons">
+                    <h5><i class="bi bi-x-circle text-danger"></i> 用户槽点（缺点）</h5>
+                    <ul id="consList"></ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reviews Section -->
+        <div class="chart-container" id="reviewsSection" style="display:none;">
+            <h5>
+                <i class="bi bi-chat-text"></i> 用户评价
+                <button class="btn btn-sm btn-outline-primary float-end" onclick="toggleReviews()">
+                    <span id="toggleButtonText">点击查看用户评价</span>
+                </button>
+            </h5>
+            <hr>
+            <div id="reviewsList" style="display:none;"></div>
+        </div>
+
+        <!-- Comparison Modal -->
+        <div class="modal fade" id="comparisonModal" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="bi bi-bar-chart"></i> 竞品对比分析</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mb-4">
+                            <div class="col-md-8">
+                                <div id="comparisonChart" style="height: 400px;"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>选择对比产品</h6>
+                                <div id="comparisonCheckboxes"></div>
+                                <button class="btn btn-sm btn-primary mt-2" onclick="updateComparison()">更新对比</button>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6><i class="bi bi-check-circle text-success"></i> 产品优势</h6>
+                                <div id="comparisonPros"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <h6><i class="bi bi-x-circle text-danger"></i> 产品劣势</h6>
+                                <div id="comparisonCons"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <h6><i class="bi bi-lightbulb text-warning"></i> 购买建议</h6>
+                                <div id="comparisonAdvice"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let reviewsData = {};
+        let currentProduct = null;
+        let currentBrand = null;
+        let reviewsVisible = false;
+
+        // Load data from JSON file
+        async function loadData() {
+            try {
+                const response = await fetch('data/reviews.json');
+                reviewsData = await response.json();
+                populateBrands();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                alert('加载数据失败，请确保data/reviews.json文件存在');
+            }
+        }
+
+        // Populate brand select
+        function populateBrands() {
+            const brandSelect = document.getElementById('brandSelect');
+            brandSelect.innerHTML = '<option value="">请选择品牌</option>';
+            
+            // Define brand display names
+            const brandNames = {
+                'Apple': 'Apple (苹果)',
+                'Huawei': 'Huawei (华为)',
+                'Xiaomi': 'Xiaomi (小米)',
+                'Samsung': 'Samsung (三星)',
+                'Oppo': 'Oppo (OPPO)',
+                'Vivo': 'Vivo (vivo)',
+                'Honor': 'Honor (荣耀)'
+            };
+            
+            // Define brand order
+            const brandOrder = ['Apple', 'Huawei', 'Xiaomi', 'Samsung', 'Oppo', 'Vivo', 'Honor'];
+            
+            // Get unique brands from data
+            const brands = new Set();
+            Object.values(reviewsData.products).forEach(product => {
+                brands.add(product.brand);
+            });
+            
+            // Sort brands by order
+            const sortedBrands = Array.from(brands).sort((a, b) => {
+                return brandOrder.indexOf(a) - brandOrder.indexOf(b);
+            });
+            
+            // Add options
+            sortedBrands.forEach(brand => {
+                const option = document.createElement('option');
+                option.value = brand;
+                option.textContent = brandNames[brand] || brand;
+                brandSelect.appendChild(option);
+            });
+        }
+
+        // Get brand display name
+        function getBrandDisplayName(brand) {
+            const names = {
+                'Apple': 'Apple (苹果)',
+                'Huawei': 'Huawei (华为)',
+                'Xiaomi': 'Xiaomi (小米)',
+                'Samsung': 'Samsung (三星)',
+                'Oppo': 'Oppo (OPPO)',
+                'Vivo': 'Vivo (vivo)',
+                'Honor': 'Honor (荣耀)'
+            };
+            return names[brand] || brand;
+        }
+
+        // Brand change handler
+        function onBrandChange() {
+            const brandSelect = document.getElementById('brandSelect');
+            const productSelect = document.getElementById('productSelect');
+            const selectedBrand = brandSelect.value;
+            
+            productSelect.innerHTML = '<option value="">请选择产品</option>';
+            
+            if (selectedBrand) {
+                const products = Object.entries(reviewsData.products)
+                    .filter(([name, data]) => data.brand === selectedBrand)
+                    .map(([name, data]) => ({name, data}))
+                    .sort((a, b) => {
+                        // Sort by product generation (newer first)
+                        return extractYear(b.name) - extractYear(a.name);
+                    });
+                
+                products.forEach(({name, data}) => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    productSelect.appendChild(option);
+                });
+            }
+        }
+
+        // Extract year from product name for sorting
+        function extractYear(productName) {
+            const match = productName.match(/(\d{4}|\d+)/);
+            if (match) {
+                const num = parseInt(match[1]);
+                return num > 2000 ? num : 2000 + num; // Handle both 2024 and 24
+            }
+            return 0;
+        }
+
+        // Product change handler
+        function onProductChange() {
+            // Optional: Auto-analyze when product is selected
+        }
+
+        // Analyze product
+        function analyzeProduct() {
+            const productSelect = document.getElementById('productSelect');
+            const selectedProduct = productSelect.value;
+            
+            if (!selectedProduct || !reviewsData.products[selectedProduct]) {
+                alert('请先选择产品');
+                return;
+            }
+            
+            currentProduct = selectedProduct;
+            currentBrand = reviewsData.products[selectedProduct].brand;
+            
+            const productData = reviewsData.products[selectedProduct];
+            const reviews = productData.reviews;
+            const priceData = productData.price || {};
+            
+            // Update stats
+            document.getElementById('totalReviews').textContent = reviews.length;
+            const positive = reviews.filter(r => r.sentiment === 'positive').length;
+            const negative = reviews.filter(r => r.sentiment === 'negative').length;
+            const avgScore = (reviews.reduce((sum, r) => sum + r.score, 0) / reviews.length).toFixed(1);
+            
+            document.getElementById('positiveReviews').textContent = positive;
+            document.getElementById('negativeReviews').textContent = negative;
+            document.getElementById('avgScore').textContent = avgScore;
+            
+            // Update price info
+            if (priceData.current_price) {
+                document.getElementById('currentPrice').textContent = `¥${priceData.current_price}`;
+                
+                const trend = priceData.price_trend;
+                const trendBadge = document.getElementById('priceTrend');
+                trendBadge.textContent = trend;
+                if (trend === '上涨') {
+                    trendBadge.className = 'badge bg-danger';
+                } else if (trend === '下跌') {
+                    trendBadge.className = 'badge bg-success';
+                } else {
+                    trendBadge.className = 'badge bg-secondary';
+                }
+                
+                document.getElementById('highestPrice').textContent = `¥${priceData.highest_price}`;
+                document.getElementById('lowestPrice').textContent = `¥${priceData.lowest_price}`;
+                
+                // Show recommendations
+                document.getElementById('recommendationsRow').style.display = 'flex';
+                renderRecommendations(productData);
+            }
+            
+            // Show stats cards
+            document.getElementById('statsCards').style.display = 'flex';
+            document.getElementById('chartsRow1').style.display = 'flex';
+            document.getElementById('prosConsRow').style.display = 'flex';
+            document.getElementById('reviewsSection').style.display = 'block';
+            
+            // Render charts
+            renderSentimentChart(reviews);
+            renderSourceChart(reviews);
+            
+            // Render pros and cons
+            renderProsCons(productData);
+            
+            // Render reviews
+            renderReviews(reviews);
+        }
+        
+        // Render similar priced recommendations
+        function renderRecommendations(productData) {
+            const container = document.getElementById('recommendationsList');
+            container.innerHTML = '';
+            
+            const similar = productData.similar_priced || [];
+            
+            if (similar.length === 0) {
+                container.innerHTML = '<div class="col-12"><p class="text-muted">暂无同价位推荐</p></div>';
+                return;
+            }
+            
+            similar.forEach(item => {
+                const col = document.createElement('div');
+                col.className = 'col-md-4 mb-3';
+                
+                const diff = item.difference;
+                const diffClass = diff > 0 ? 'text-danger' : diff < 0 ? 'text-success' : 'text-muted';
+                const diffText = diff > 0 ? `+${diff}` : diff < 0 ? `${diff}` : '同价';
+                
+                col.innerHTML = `
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="card-title">${item.brand} ${item.model}</h6>
+                            <p class="card-text">
+                                <strong>¥${item.price}</strong>
+                                <span class="${diffClass}">(${diffText})</span>
+                            </p>
+                            ${item.recommendation_reason ? `<p class="card-text"><small class="text-muted"><i class="bi bi-info-circle"></i> ${item.recommendation_reason}</small></p>` : ''}
+                            <button class="btn btn-sm btn-outline-primary mt-2" onclick="selectProductByBrandAndModel('${item.brand}', '${item.model}')">
+                                查看详情
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(col);
+            });
+        }
+        
+        // Select product by brand and model (for recommendations)
+        function selectProductByBrandAndModel(brand, model) {
+            const brandSelect = document.getElementById('brandSelect');
+            const productSelect = document.getElementById('productSelect');
+            
+            // Select brand
+            for (let i = 0; i < brandSelect.options.length; i++) {
+                if (brandSelect.options[i].value === brand) {
+                    brandSelect.selectedIndex = i;
+                    break;
+                }
+            }
+            
+            // Trigger brand change to load products
+            onBrandChange();
+            
+            // Select product (need to wait for products to load)
+            setTimeout(() => {
+                for (let i = 0; i < productSelect.options.length; i++) {
+                    if (productSelect.options[i].value === model) {
+                        productSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+                analyzeProduct();
+            }, 100);
+        }
+
+        // Render sentiment chart
+        function renderSentimentChart(reviews) {
+            const chart = echarts.init(document.getElementById('sentimentChart'));
+            const positive = reviews.filter(r => r.sentiment === 'positive').length;
+            const neutral = reviews.filter(r => r.sentiment === 'neutral').length;
+            const negative = reviews.filter(r => r.sentiment === 'negative').length;
+            
+            const option = {
+                tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: {c} ({d}%)' },
+                legend: { bottom: 0 },
+                series: [{
+                    name: '情感分布',
+                    type: 'pie',
+                    radius: '60%',
+                    data: [
+                        { value: positive, name: '正面', itemStyle: { color: '#28a745' } },
+                        { value: neutral, name: '中性', itemStyle: { color: '#ffc107' } },
+                        { value: negative, name: '负面', itemStyle: { color: '#dc3545' } }
+                    ],
+                    emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' } }
+                }]
+            };
+            
+            chart.setOption(option);
+        }
+
+        // Render source chart
+        function renderSourceChart(reviews) {
+            const chart = echarts.init(document.getElementById('sourceChart'));
+            const sources = {};
+            reviews.forEach(r => {
+                sources[r.source] = (sources[r.source] || 0) + 1;
+            });
+            
+            const option = {
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                xAxis: { type: 'category', data: Object.keys(sources) },
+                yAxis: { type: 'value' },
+                series: [{
+                    data: Object.values(sources),
+                    type: 'bar',
+                    itemStyle: { color: '#667eea' }
+                }]
+            };
+            
+            chart.setOption(option);
+        }
+
+        // Render pros and cons
+        function renderProsCons(productData) {
+            const prosList = document.getElementById('prosList');
+            const consList = document.getElementById('consList');
+            
+            prosList.innerHTML = '';
+            consList.innerHTML = '';
+            
+            productData.pros.forEach(pro => {
+                const li = document.createElement('li');
+                li.innerHTML = `<i class="bi bi-check-circle-fill pro"></i> ${pro}`;
+                prosList.appendChild(li);
+            });
+            
+            productData.cons.forEach(con => {
+                const li = document.createElement('li');
+                li.innerHTML = `<i class="bi bi-x-circle-fill con"></i> ${con}`;
+                consList.appendChild(li);
+            });
+        }
+
+        // Render reviews
+        function renderReviews(reviews) {
+            const container = document.getElementById('reviewsList');
+            container.innerHTML = '';
+            
+            reviews.forEach(review => {
+                const card = document.createElement('div');
+                card.className = `review-card ${review.sentiment}`;
+                card.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <strong>${review.nickname}</strong>
+                            <span class="sentiment-badge ${review.sentiment}">${review.sentiment === 'positive' ? '正面' : review.sentiment === 'neutral' ? '中性' : '负面'}</span>
+                        </div>
+                        <div class="text-muted" style="font-size: 0.85rem;">
+                            ${'★'.repeat(review.score)}${'☆'.repeat(5-review.score)}
+                        </div>
+                    </div>
+                    <p class="mb-2">${review.content}</p>
+                    <div class="d-flex justify-content-between align-items-center" style="font-size: 0.85rem; color: #666;">
+                        <span><i class="bi bi-house"></i> ${review.source}</span>
+                        <span><i class="bi bi-clock"></i> ${review.date}</span>
+                        <span><i class="bi bi-hand-thumbs-up"></i> ${review.likes} 赞</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Toggle reviews visibility
+        function toggleReviews() {
+            const container = document.getElementById('reviewsList');
+            const buttonText = document.getElementById('toggleButtonText');
+            
+            reviewsVisible = !reviewsVisible;
+            
+            if (reviewsVisible) {
+                container.style.display = 'block';
+                buttonText.textContent = '收起用户评价';
+            } else {
+                container.style.display = 'none';
+                buttonText.textContent = `点击查看用户评价 (共${document.getElementById('totalReviews').textContent}条)`;
+            }
+        }
+
+        // Show comparison modal
+        function showComparison() {
+            const modal = new bootstrap.Modal(document.getElementById('comparisonModal'));
+            
+            // Populate checkboxes
+            const container = document.getElementById('comparisonCheckboxes');
+            container.innerHTML = '';
+            
+            Object.keys(reviewsData.products).forEach(productName => {
+                const div = document.createElement('div');
+                div.className = 'form-check';
+                div.innerHTML = `
+                    <input class="form-check-input" type="checkbox" value="${productName}" id="compare_${productName}" 
+                           ${productName === currentProduct ? 'checked disabled' : ''}>
+                    <label class="form-check-label" for="compare_${productName}">
+                        ${productName}
+                    </label>
+                `;
+                container.appendChild(div);
+            });
+            
+            modal.show();
+            
+            // Initial comparison
+            updateComparison();
+        }
+
+        // Update comparison
+        function updateComparison() {
+            const checkboxes = document.querySelectorAll('#comparisonCheckboxes input[type="checkbox"]:checked');
+            const selectedProducts = Array.from(checkboxes).map(cb => cb.value);
+            
+            if (selectedProducts.length < 2) {
+                alert('请至少选择2个产品进行对比');
+                return;
+            }
+            
+            renderComparisonChart(selectedProducts);
+            renderComparisonAnalysis(selectedProducts);
+        }
+
+        // Render comparison chart
+        function renderComparisonChart(products) {
+            const chart = echarts.init(document.getElementById('comparisonChart'));
+            
+            const dimensions = ['性能', '拍照', '续航', '性价比', '系统'];
+            const series = products.map(productName => {
+                const productData = reviewsData.products[productName];
+                const reviews = productData.reviews;
+                
+                // Calculate scores for each dimension (simplified)
+                const score = (reviews.reduce((sum, r) => sum + r.score, 0) / reviews.length).toFixed(1);
+                
+                return {
+                    name: productName,
+                    type: 'radar',
+                    data: [{
+                        value: [
+                            productName.includes('iPhone') ? 5 : productName.includes('Mate') ? 4 : 4.5,
+                            productName.includes('iPhone') ? 5 : productName.includes('Mate') ? 4.5 : 4,
+                            productName.includes('iPhone') ? 4.5 : productName.includes('Mate') ? 4 : 4,
+                            productName.includes('iPhone') ? 3 : productName.includes('Mate') ? 4 : 5,
+                            productName.includes('iPhone') ? 5 : productName.includes('Mate') ? 4.5 : 4
+                        ],
+                        name: productName
+                    }]
+                };
+            });
+            
+            const option = {
+                tooltip: {},
+                legend: { bottom: 0 },
+                radar: {
+                    indicator: dimensions.map(d => ({ name: d, max: 5 }))
+                },
+                series: [{
+                    type: 'radar',
+                    data: series[0].data.concat(series[1] ? series[1].data : [])
+                }]
+            };
+            
+            chart.setOption(option);
+        }
+
+        // Render comparison analysis
+        function renderComparisonAnalysis(products) {
+            const prosContainer = document.getElementById('comparisonPros');
+            const consContainer = document.getElementById('comparisonCons');
+            const adviceContainer = document.getElementById('comparisonAdvice');
+            
+            prosContainer.innerHTML = '';
+            consContainer.innerHTML = '';
+            adviceContainer.innerHTML = '';
+            
+            // 生成详细的产品分析
+            products.forEach(productName => {
+                const productData = reviewsData.products[productName];
+                const reviews = productData.reviews;
+                const price = productData.price.current_price;
+                const avgScore = (reviews.reduce((sum, r) => sum + r.score, 0) / reviews.length).toFixed(1);
+                const positiveRate = (reviews.filter(r => r.sentiment === 'positive').length / reviews.length * 100).toFixed(0);
+                
+                // 产品优势 - 显示所有优点
+                const proDiv = document.createElement('div');
+                proDiv.className = 'mb-3 p-2 border-bottom';
+                proDiv.innerHTML = `
+                    <strong>${productName}</strong>
+                    <span class="badge bg-primary ms-2">¥${price}</span>
+                    <span class="badge bg-success ms-1">评分${avgScore}</span>
+                    <span class="badge bg-info ms-1">好评率${positiveRate}%</span>
+                    <ul class="mt-2 mb-0 ps-3">
+                        ${productData.pros.map(pro => `<li class="text-success">${pro}</li>`).join('')}
+                    </ul>
+                `;
+                prosContainer.appendChild(proDiv);
+                
+                // 产品劣势 - 显示所有缺点
+                const conDiv = document.createElement('div');
+                conDiv.className = 'mb-3 p-2 border-bottom';
+                conDiv.innerHTML = `
+                    <strong>${productName}</strong>
+                    <ul class="mt-2 mb-0 ps-3">
+                        ${productData.cons.map(con => `<li class="text-danger">${con}</li>`).join('')}
+                    </ul>
+                `;
+                consContainer.appendChild(conDiv);
+            });
+            
+            // 生成详细的购买建议
+            let adviceHtml = '<p><strong>综合购买建议：</strong></p>';
+            
+            products.forEach((productName, index) => {
+                const productData = reviewsData.products[productName];
+                const price = productData.price.current_price;
+                const pros = productData.pros;
+                const cons = productData.cons;
+                
+                // 根据品牌和价格生成针对性建议
+                let targetUser = '';
+                let keyAdvantage = '';
+                let warning = '';
+                
+                if (productData.brand === 'Apple') {
+                    targetUser = '追求iOS生态系统、长期使用（3年以上）、对视频拍摄有高要求的用户';
+                    keyAdvantage = `A系列芯片性能强劲，${pros.includes('视频拍摄') ? '视频拍摄能力顶尖' : '系统流畅度高'}`;
+                    warning = cons.includes('充电慢') ? '注意：充电速度较慢，建议搭配无线充电使用' : '';
+                } else if (productData.brand === 'Huawei') {
+                    targetUser = '商务人士、对信号要求高、需要卫星通信功能的用户';
+                    keyAdvantage = `${pros.includes('信号好') ? '信号表现优秀' : '国产芯片性能强劲'}`;
+                    warning = cons.includes('价格高') ? '注意：价格较高，建议等待促销时机入手' : '';
+                } else if (productData.brand === 'Xiaomi') {
+                    targetUser = '追求性价比、喜欢折腾系统、对快充有需求的用户';
+                    keyAdvantage = `${pros.includes('充电快') ? '快充技术领先' : '性价比高'}`;
+                    warning = cons.includes('系统广告') ? '注意：系统广告较多，建议手动关闭' : '';
+                } else if (productData.brand === 'Samsung') {
+                    targetUser = '喜欢大屏、需要S Pen、对屏幕素质要求高的用户';
+                    keyAdvantage = `${pros.includes('屏幕好') ? '屏幕素质顶尖' : '做工精良'}`;
+                    warning = cons.includes('价格高') ? '注意：价格较高，建议考虑上一代旗舰' : '';
+                } else {
+                    targetUser = '追求性价比、对性能有一定要求的用户';
+                    keyAdvantage = pros[0] || '综合表现均衡';
+                    warning = cons[0] ? `注意：${cons[0]}` : '';
+                }
+                
+                adviceHtml += `
+                    <div class="mb-3 p-2 border-bottom">
+                        <p>${index + 1}. <strong>${productName}</strong> <span class="badge bg-primary">¥${price}</span></p>
+                        <p class="mb-1"><small><strong>适合人群：</strong>${targetUser}</small></p>
+                        <p class="mb-1"><small><strong>核心优势：</strong>${keyAdvantage}</small></p>
+                        ${warning ? `<p class="mb-0"><small class="text-warning"><strong>温馨提示：</strong>${warning}</small></p>` : ''}
+                    </div>
+                `;
+            });
+            
+            // 添加对比总结
+            if (products.length >= 2) {
+                const product1 = reviewsData.products[products[0]];
+                const product2 = reviewsData.products[products[1]];
+                const priceDiff = product1.price.current_price - product2.price.current_price;
+                
+                adviceHtml += `
+                    <div class="mt-3 p-2 bg-light rounded">
+                        <p><strong>对比总结：</strong></p>
+                        <p><small>
+                            • 价格差异：${priceDiff > 0 ? products[0] + '比' + products[1] + '贵¥' + priceDiff : products[1] + '比' + products[0] + '贵¥' + Math.abs(priceDiff)}<br>
+                            • 如果预算充足，建议选择${product1.price.current_price > product2.price.current_price ? products[1] : products[0]}（性价比更高）<br>
+                            • 如果追求极致体验，建议选择${product1.price.current_price > product2.price.current_price ? products[0] : products[1]}（旗舰配置）
+                        </small></p>
+                    </div>
+                `;
+            }
+            
+            adviceContainer.innerHTML = adviceHtml;
+        }
+
+        // AI助手功能
+        let aiHistory = [];  // AI对话历史
+        let fullProductsData = null;  // 完整产品数据（从前端发送）
+        let isFullDataLoaded = false;  // 完整数据是否已加载
+        
+        // 加载完整产品数据到AI
+        async function loadFullProducts() {
+            const btn = document.getElementById('loadProductsBtn');
+            const statusDiv = document.getElementById('productDataStatus');
+            
+            if (isFullDataLoaded) {
+                alert('完整产品数据已加载！AI现在可以访问全部42款产品的信息。');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 加载中...';
+            statusDiv.innerHTML = '<small class="text-info">正在加载42款产品数据...</small>';
+            
+            try {
+                // 从本地加载产品数据
+                const response = await fetch('data/reviews.json');
+                const data = await response.json();
+                fullProductsData = data.products;
+                
+                // 发送到后端
+                const sendResponse = await fetch('http://localhost:5000/api/ai/load-products', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        products: fullProductsData
+                    })
+                });
+                
+                const result = await sendResponse.json();
+                
+                if (result.success) {
+                    isFullDataLoaded = true;
+                    btn.innerHTML = '<i class="bi bi-check-circle"></i> 已加载';
+                    btn.classList.remove('btn-outline-secondary');
+                    btn.classList.add('btn-success');
+                    statusDiv.innerHTML = `<small class="text-success">✅ 完整产品数据已加载（${result.product_count}款），AI现在可以给出更精准的推荐！</small>`;
+                    
+                    // 添加到聊天历史
+                    appendAiMessage('ai', `✅ 已加载${result.product_count}款手机的完整信息，现在可以给您更精准的推荐了！`);
+                } else {
+                    throw new Error(result.error || '加载失败');
+                }
+                
+            } catch (error) {
+                console.error('加载产品数据失败:', error);
+                statusDiv.innerHTML = `<small class="text-danger">加载失败：${error.message}</small>`;
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-database"></i> 重试';
+            }
+        }
+        
+        // 简单的Markdown解析函数
+        function parseMarkdown(text) {
+            // 粗体：**text** 或 __text__
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            text = text.replace(/__(.*?)__/g, '<strong>$1</strong>');
+            
+            // 斜体：*text* 或 _text_
+            text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            text = text.replace(/_(.*?)_/g, '<em>$1</em>');
+            
+            // 行内代码：`code`
+            text = text.replace(/`(.*?)`/g, '<code>$1</code>');
+            
+            // 代码块：```code```
+            text = text.replace(/```[\s\S]*?```/g, function(match) {
+                return '<pre><code>' + match.replace(/```/g, '') + '</code></pre>';
+            });
+            
+            // 标题：### text
+            text = text.replace(/^### (.*?)$/gm, '<h5>$1</h5>');
+            text = text.replace(/^## (.*?)$/gm, '<h4>$1</h4>');
+            text = text.replace(/^# (.*?)$/gm, '<h3>$1</h3>');
+            
+            // 无序列表：- text 或 * text
+            text = text.replace(/^[\-\*] (.*?)$/gm, '<li>$1</li>');
+            text = text.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+            
+            // 有序列表：1. text
+            text = text.replace(/^\d+\. (.*?)$/gm, '<li>$1</li>');
+            
+            // 段落：双换行
+            text = text.replace(/\n\n/g, '<br><br>');
+            // 单换行
+            text = text.replace(/\n/g, '<br>');
+            
+            return text;
+        }
+        
+        // 发送AI消息
+        async function sendAiMessage() {
+            const input = document.getElementById('aiInput');
+            const message = input.value.trim();
+            
+            if (!message) {
+                alert('请输入您的问题');
+                return;
+            }
+            
+            // 清空输入框
+            input.value = '';
+            
+            // 显示用户消息
+            appendAiMessage('user', message);
+            
+            // 获取当前选中的产品
+            const selectedProduct = currentProduct;
+            
+            // 获取或创建session_id（用于对话历史）
+            if (!window.sessionId) {
+                window.sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            }
+            
+            // 显示加载状态
+            const loadingDiv = appendAiMessage('ai', '正在思考中...', true);
+            
+            try {
+                // 调用AI后端API
+                const response = await fetch('http://localhost:5000/api/ai/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        product: selectedProduct,
+                        session_id: window.sessionId  // 添加session_id
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // 移除加载状态
+                loadingDiv.remove();
+                
+                if (data.success) {
+                    // 显示AI回复
+                    appendAiMessage('ai', data.response);
+                    // 保存到历史
+                    aiHistory.push({
+                        user: message,
+                        ai: data.response,
+                        time: new Date().toLocaleTimeString()
+                    });
+                } else {
+                    appendAiMessage('ai', `抱歉，AI服务暂时不可用：${data.error}`);
+                }
+                
+            } catch (error) {
+                console.error('AI请求失败:', error);
+                loadingDiv.remove();
+                appendAiMessage('ai', '抱歉，无法连接到AI服务，请确保AI助手服务已启动（运行 ai_assistant.py）');
+            }
+        }
+        
+        // 添加AI消息到聊天历史
+        function appendAiMessage(sender, text, isLoading = false) {
+            const historyDiv = document.getElementById('aiChatHistory');
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `alert ${sender === 'user' ? 'alert-primary' : 'alert-success'} mb-2`;
+            messageDiv.style.fontSize = '0.9rem';
+            
+            if (isLoading) {
+                messageDiv.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                        <span>${text}</span>
+                    </div>
+                `;
+            } else {
+                const icon = sender === 'user' ? 'bi-person-fill' : 'bi-robot';
+                const senderName = sender === 'user' ? '您' : 'AI助手';
+                
+                // 解析Markdown格式
+                const parsedText = parseMarkdown(text);
+                
+                messageDiv.innerHTML = `
+                    <div class="d-flex align-items-start">
+                        <i class="bi ${icon} me-2 mt-1"></i>
+                        <div>
+                            <strong>${senderName}：</strong>
+                            <span>${parsedText}</span>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            historyDiv.appendChild(messageDiv);
+            
+            // 滚动到底部
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+            
+            return messageDiv;
+        }
+        
+        // 清空AI对话历史
+        function clearAiHistory() {
+            const historyDiv = document.getElementById('aiChatHistory');
+            historyDiv.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> 您好！我是AI助手，可以帮您：
+                    <ul class="mb-0 mt-2">
+                        <li>根据预算推荐手机</li>
+                        <li>对比不同手机的优缺点</li>
+                        <li>回答关于手机性能、拍照、续航等问题</li>
+                        <li>提供购买建议</li>
+                    </ul>
+                </div>
+            `;
+            aiHistory = [];
+        }
+        
+        // 添加清空历史按钮到AI面板
+        document.addEventListener('DOMContentLoaded', function() {
+            const aiPanel = document.querySelector('.ai-assistant-panel .card-body');
+            if (aiPanel) {
+                const clearBtn = document.createElement('button');
+                clearBtn.className = 'btn btn-sm btn-outline-secondary float-end';
+                clearBtn.innerHTML = '<i class="bi bi-trash"></i> 清空历史';
+                clearBtn.onclick = clearAiHistory;
+                const cardHeader = document.querySelector('.ai-assistant-panel .card-header');
+                cardHeader.appendChild(clearBtn);
+            }
+        });
+
+        // Load data on page load
+        loadData();
+    </script>
+</body>
+</html>
